@@ -21,7 +21,7 @@ namespace TaskRateLimiting.Tests
             for (int i = 0; i < 10; i++)
             {
                 tasks.Add(taskContext.Debounce(TimeSpan.FromMilliseconds(100), cts.Token)
-                    .ContinueWith(taskContext => callCounter++, TaskContinuationOptions.OnlyOnRanToCompletion));
+                    .Subscribe(taskContext => callCounter++));
             }
 
             try
@@ -50,7 +50,7 @@ namespace TaskRateLimiting.Tests
             for (int i = 0; i < 10; i++)
             {
                 tasks.Add(taskContext.Debounce(TimeSpan.FromMilliseconds(100), cts.Token)
-                    .ContinueWith(taskContext => callCounter++, TaskContinuationOptions.OnlyOnRanToCompletion));
+                    .Subscribe(taskContext => callCounter++));
 
                 if (i == 4)
                 {
@@ -84,7 +84,7 @@ namespace TaskRateLimiting.Tests
             for (int i = 0; i < 10; i++)
             {
                 tasks.Add(taskContext.Debounce(TimeSpan.FromMilliseconds(100), cts.Token)
-                    .ContinueWith(taskContext => callCounter++, TaskContinuationOptions.OnlyOnRanToCompletion));
+                    .Subscribe(taskContext => callCounter++));
             }
 
             cts.Cancel();
@@ -100,6 +100,37 @@ namespace TaskRateLimiting.Tests
 
             // assert
             Assert.Equal(0, callCounter);
+        }
+
+        [Fact]
+        public void Throttle_WithRapidCalls_CompletesTwice()
+        {
+            // arrange
+            TaskContext taskContext = new TaskContext();
+            CancellationTokenSource cts = new CancellationTokenSource();
+            List<Task> tasks = new List<Task>();
+            int callCounter = 0;
+
+            // act
+            for (int i = 0; i < 4; i++)
+            {
+                tasks.Add(taskContext.Throttle(TimeSpan.FromMilliseconds(100), cts.Token)
+                        .Subscribe(taskContext => callCounter++));
+
+                Thread.Sleep(50);
+            }
+
+            try
+            {
+                Task.WaitAll(tasks.ToArray());
+            }
+            catch (AggregateException)
+            {
+
+            }
+
+            // assert
+            Assert.Equal(2, callCounter);
         }
     }
 }
